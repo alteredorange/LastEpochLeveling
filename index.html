@@ -192,9 +192,9 @@
     <h1>Last Epoch Leveling Guide</h1>
 
     <div class="button-group">
-        <button id="clearAllStorageButton">Clear All Checks & Storage</button>
+        <button id="clearAllStorageButton">Reset All</button>
         <button id="clearChecksButton">Clear All Checks</button>
-        <button id="clearCustomObjectivesButton">Clear Custom Objectives</button>
+        <button id="clearCustomObjectivesButton">Delete All Custom</button>
     </div>
 
     <h2>Act 1</h2>
@@ -596,16 +596,20 @@
                     return; // Skip lists without IDs
                 }
 
-                // Select only custom objective items within this specific list
-                ul.querySelectorAll('li.custom-objective-item').forEach(li => {
-                    const checkbox = li.querySelector('input[type="checkbox"]');
-                    const span = li.querySelector('span');
-                    if (checkbox && span) {
-                        customObjectivesData.push({
-                            sectionId: sectionId,
-                            text: span.textContent,
-                            checked: checkbox.checked
-                        });
+                // For each custom objective, record its index among all children (including normal objectives)
+                const lis = Array.from(ul.children);
+                lis.forEach((li, idx) => {
+                    if (li.classList.contains('custom-objective-item')) {
+                        const checkbox = li.querySelector('input[type="checkbox"]');
+                        const span = li.querySelector('span');
+                        if (checkbox && span) {
+                            customObjectivesData.push({
+                                sectionId: sectionId,
+                                text: span.textContent,
+                                checked: checkbox.checked,
+                                index: idx
+                            });
+                        }
                     }
                 });
             });
@@ -622,18 +626,39 @@
                 try {
                     const customObjectivesData = JSON.parse(savedCustomObjectives);
                     if (Array.isArray(customObjectivesData)) {
+                        // Group by section for efficiency
+                        const sectionMap = {};
                         customObjectivesData.forEach(objData => {
-                            const targetList = document.getElementById(objData.sectionId);
-                            const placeholder = targetList?.querySelector('.add-objective-placeholder');
-
-                            if (targetList && placeholder) {
-                                // Create the element using only text and checked state
+                            if (!sectionMap[objData.sectionId]) sectionMap[objData.sectionId] = [];
+                            sectionMap[objData.sectionId].push(objData);
+                        });
+                        Object.entries(sectionMap).forEach(([sectionId, items]) => {
+                            const targetList = document.getElementById(sectionId);
+                            if (!targetList) return;
+                            // Sort by saved index
+                            items.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+                            items.forEach(objData => {
                                 const li = createCustomObjectiveElement({ text: objData.text, checked: objData.checked });
-                                // Insert the new custom item *before* the placeholder in its section
-                                targetList.insertBefore(li, placeholder);
-                            } else {
-                                console.warn(`Could not find target list #${objData.sectionId} or its placeholder for custom objective:`, objData.text);
-                            }
+                                // Insert at the correct index (before the placeholder if index is too large)
+                                const lis = Array.from(targetList.children);
+                                let insertBefore = null;
+                                let count = 0;
+                                for (let i = 0; i < lis.length; i++) {
+                                    if (count === objData.index) {
+                                        insertBefore = lis[i];
+                                        break;
+                                    }
+                                    // Don't count the placeholder itself
+                                    if (!lis[i].classList.contains('add-objective-placeholder')) {
+                                        count++;
+                                    }
+                                }
+                                if (!insertBefore) {
+                                    // Insert before placeholder if exists, else at end
+                                    insertBefore = targetList.querySelector('.add-objective-placeholder') || null;
+                                }
+                                targetList.insertBefore(li, insertBefore);
+                            });
                         });
                     } else {
                         console.error("Custom objectives data is not an array:", customObjectivesData);
@@ -674,13 +699,11 @@
         // --- Drag and Drop Handlers ---
 
         function handleDragStart(event) {
-            // Only allow dragging custom items
-            if (event.target.classList.contains('custom-objective-item')) {
-                draggedItem = event.target;
-                // Set data to identify the drag source list (optional but good practice)
+            draggedItem = event.target.closest('li.custom-objective-item');
+            if (draggedItem) {
+                // Store the source list id for validation
                 event.dataTransfer.setData('text/plain', draggedItem.closest('ul.objective-list').id);
-                event.dataTransfer.effectAllowed = 'move'; // Indicate the type of drag
-                // Add slight delay so the browser has time to render the drag image
+                event.dataTransfer.effectAllowed = 'move';
                 setTimeout(() => {
                     draggedItem.classList.add('dragging');
                 }, 0);
@@ -690,10 +713,9 @@
         }
 
         function handleDragEnd(event) {
+            event.preventDefault();
             if (draggedItem) {
-                // Clean up styles regardless of drop success
                 draggedItem.classList.remove('dragging');
-                // Remove any lingering indicators
                 document.querySelectorAll('.drag-over-indicator').forEach(indicator => {
                     indicator.classList.remove('drag-over-indicator');
                 });
@@ -702,33 +724,24 @@
         }
 
         function handleDragOver(event) {
-
-            event.preventDefault(); // Necessary to allow dropping
-            if (!draggedItem) return; // Only handle if an item is being dragged
+            event.preventDefault();
+            if (!draggedItem) return;
 
             const targetList = event.target.closest('ul.objective-list');
-            // Ensure we are dropping within the *same* list the drag started from
-            const sourceListId = event.dataTransfer.getData('text/plain');
-            if (!targetList || targetList.id !== sourceListId) {
-                event.dataTransfer.dropEffect = 'none'; // Indicate invalid drop target
-                return;
+            if (!targetList) return;
+
+            // Find the closest LI in the list
+            let targetLi = event.target.closest('li');
+            // Only allow dropping before standard or custom objectives, but not before the add-objective-placeholder
+            if (targetLi && targetLi.classList.contains('add-objective-placeholder')) {
+                targetLi = null; // treat as dropping before the placeholder (end of list)
             }
-            event.dataTransfer.dropEffect = 'move'; // Indicate valid drop target
 
-
-            const afterElement = getDragAfterElement(targetList, event.clientY);
-
-            // Remove previous indicators
-            targetList.querySelectorAll('.drag-over-indicator').forEach(indicator => {
-                indicator.classList.remove('drag-over-indicator');
-            });
-
-            // Add indicator to the element we're hovering over/before
-            if (afterElement) {
-                afterElement.classList.add('drag-over-indicator');
+            // Only allow drop indicators before standard or custom objectives, not before add-objective-placeholder
+            targetList.querySelectorAll('.drag-over-indicator').forEach(el => el.classList.remove('drag-over-indicator'));
+            if (targetLi) {
+                targetLi.classList.add('drag-over-indicator');
             } else {
-                // If no element is returned, it means drop at the end.
-                // Optionally, add indicator to the placeholder or list itself.
                 const placeholder = targetList.querySelector('.add-objective-placeholder');
                 if (placeholder) {
                     placeholder.classList.add('drag-over-indicator');
@@ -736,66 +749,58 @@
             }
         }
 
-
         function handleDrop(event) {
-            console.log('hereee')
-            event.preventDefault(); // Prevent default drop behavior
+            event.preventDefault();
             if (!draggedItem) return;
 
             const targetList = event.target.closest('ul.objective-list');
-            // Double-check drop target validity (redundant but safe)
-            const sourceListId = event.dataTransfer.getData('text/plain');
-            if (!targetList || targetList.id !== sourceListId) {
-                console.log("no dorp")
-                return; // Invalid drop
+            if (!targetList) return;
+
+            // Find the closest LI in the list
+            let targetLi = event.target.closest('li');
+            // Only allow dropping before standard or custom objectives, but not before the add-objective-placeholder
+            if (targetLi && targetLi.classList.contains('add-objective-placeholder')) {
+                targetLi = null; // treat as dropping before the placeholder (end of list)
             }
 
-            const afterElement = getDragAfterElement(targetList, event.clientY);
-
-            // Insert the dragged item at the determined position
-            if (afterElement) {
-                targetList.insertBefore(draggedItem, afterElement);
+            if (targetLi) {
+                targetList.insertBefore(draggedItem, targetLi);
             } else {
-                // If dropping at the end, insert before the placeholder
                 const placeholder = targetList.querySelector('.add-objective-placeholder');
-                targetList.insertBefore(draggedItem, placeholder);
+                if (placeholder) {
+                    targetList.insertBefore(draggedItem, placeholder);
+                } else {
+                    targetList.appendChild(draggedItem);
+                }
             }
 
-            // Remove indicator classes after drop
-            targetList.querySelectorAll('.drag-over-indicator').forEach(indicator => {
-                indicator.classList.remove('drag-over-indicator');
-            });
+            targetList.querySelectorAll('.drag-over-indicator').forEach(el => el.classList.remove('drag-over-indicator'));
 
-            saveCustomObjectives(); // Save the new order!
+            // --- Save custom objectives order after drag ---
+            // This ensures the order is saved even if custom objectives are moved between normal objectives
+            saveCustomObjectives();
         }
 
-        // Helper function to find the element to insert before
+
         function getDragAfterElement(container, y) {
-            // Get all draggable items in the container, excluding the one being dragged
             const draggableElements = [...container.querySelectorAll('li.custom-objective-item:not(.dragging)')];
 
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
-                // Calculate vertical midpoint of the element
                 const offset = y - box.top - box.height / 2;
-                // We want the element where the mouse is *above* its midpoint (negative offset)
-                // and closer to zero than the current closest element
                 if (offset < 0 && offset > closest.offset) {
                     return { offset: offset, element: child };
                 } else {
                     return closest;
                 }
-            }, { offset: Number.NEGATIVE_INFINITY }).element; // Initial closest has worst possible offset
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
-
-
-
 
         // --- Clearing Functions ---
 
         // Clears ONLY the checkmarks from ALL objectives (predefined and custom)
         function clearAllChecks() {
-            if (confirm("Are you sure you want to clear all check marks? This will not remove custom objectives.")) {
+            if (confirm("Are you sure you want to clear all check marks?")) {
                 // Uncheck ALL checkboxes in the document
                 allCheckboxes.forEach(cb => {
                     cb.checked = false;
@@ -804,7 +809,13 @@
 
                 // Clear saved state for predefined checks
                 localStorage.removeItem(predefinedStorageKey);
-                // Resave custom objectives with unchecked state (important!)
+
+                // Also update and save custom objectives as unchecked
+                // Uncheck all custom objective checkboxes and update style
+                document.querySelectorAll('li.custom-objective-item input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                    updateStyle(cb);
+                });
                 saveCustomObjectives();
             }
         }
