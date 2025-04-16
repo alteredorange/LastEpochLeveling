@@ -235,6 +235,7 @@
             border: 1px solid #ccc;
             object-fit: cover;
             cursor: pointer;
+            flex-shrink: 0;
         }
 
         .add-objective-placeholder.dragover {
@@ -332,7 +333,7 @@
                         talk to
                         the 2 NPCs to get to Act 2.</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 1 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -374,7 +375,7 @@
                         choose
                         Mastery, enter The Council Chamber.</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 2 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -435,7 +436,7 @@
             <li><label><input type="checkbox" id="step-39"><span>Directly go upstairs to Elder Gaspar. Enter portal to
                         Imperial Era (The Outcast Camp).</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 3 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -475,7 +476,7 @@
                         Admiral
                         Harton. Talk to NPCs (Alric) and the Dreadnought’s Railing.</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 4 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -521,7 +522,7 @@
             <li><label><input type="checkbox" id="step-61"><span>Follow main quest marker, talk to NPC
                         (Alric).</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 5 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -563,7 +564,7 @@
             <li><label><input type="checkbox" id="step-73"><span>Talk to NPC (main quest, Yulia), kill Pontifex Yulia,
                         Admiral Harton and Spymaster Zerrick. Talk to NPC (Yulia).</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 6 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -614,7 +615,7 @@
             <li><label><input type="checkbox" id="step-85"><span>Hand in quests in town (side and main
                         quests).</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Act 7 objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -634,7 +635,7 @@
                         monos.</span></label></li>
             <li><label><input type="checkbox" id="step-end-4"><span>Get some rest, you earned it!</span></label></li>
             <!-- Add Objective Placeholder -->
-            <li class="add-objective-placeholder">
+            <li class="add-objective-placeholder" tabindex="0">
                 <input type="text" placeholder="Add custom Endgame objective..." />
                 <button class="add-section-objective-button">+</button>
             </li>
@@ -648,29 +649,26 @@
 
     <script>
         // --- DOM Elements ---
-        // Select ALL checkboxes initially for clearing/loading predefined ones with IDs
         const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
         const predefinedCheckboxes = document.querySelectorAll('.objective-list li:not(.custom-objective-item):not(.add-objective-placeholder) input[type="checkbox"]');
-        const objectiveLists = document.querySelectorAll('ul.objective-list'); // Get all lists
+        const objectiveLists = document.querySelectorAll('ul.objective-list');
         const clearAllStorageButton = document.getElementById('clearAllStorageButton');
         const clearChecksButton = document.getElementById('clearChecksButton');
         const clearCustomObjectivesButton = document.getElementById('clearCustomObjectivesButton');
-        // Note: Add buttons are handled via event delegation
 
         // --- Storage Keys ---
-        const predefinedStorageKey = 'checklistState'; // Key for predefined checkbox states (using their IDs)
-        const customStorageKey = 'customObjectivesData'; // Key for custom objectives array {sectionId, text, checked}
+        const predefinedStorageKey = 'checklistState';
+        const customStorageKey = 'customObjectivesData';
+        const collapsedStorageKey = 'collapsedSections'; // Added for consistency
 
         // --- State Variables ---
-        let draggedItem = null; // Keep track of the element being dragged
+        let draggedItem = null;
 
         // --- Utility Functions ---
-
-        // Updates the visual style of a checkbox label based on checked state
         function updateStyle(checkbox) {
             const label = checkbox.closest('label');
-            const textSpan = label?.querySelector('span'); // Prefer styling the span if it exists
-            const targetElement = textSpan || label; // Fallback to styling the label
+            const textSpan = label?.querySelector('span');
+            const targetElement = textSpan || label;
 
             if (targetElement) {
                 if (checkbox.checked) {
@@ -682,11 +680,8 @@
         }
 
         // --- Predefined Objectives Logic ---
-
-        // Saves the state of predefined checkboxes (those with IDs) to localStorage
         function savePredefinedState() {
             const state = {};
-            // Iterate only through predefined checkboxes identified earlier
             predefinedCheckboxes.forEach(cb => {
                 if (cb.id) {
                     state[cb.id] = cb.checked;
@@ -695,7 +690,6 @@
             localStorage.setItem(predefinedStorageKey, JSON.stringify(state));
         }
 
-        // Loads the state of predefined checkboxes from localStorage
         function loadPredefinedState() {
             const savedState = localStorage.getItem(predefinedStorageKey);
             let state = {};
@@ -703,34 +697,27 @@
                 try {
                     state = JSON.parse(savedState);
                 } catch (e) {
-                    console.error("Error parsing predefined checklist state from localStorage:", e);
-                    localStorage.removeItem(predefinedStorageKey); // Clear potentially corrupted state
+                    console.error("Error parsing predefined checklist state:", e);
+                    localStorage.removeItem(predefinedStorageKey);
                 }
             }
-
-            // Iterate through predefined checkboxes and apply state or default
             predefinedCheckboxes.forEach(cb => {
                 if (cb.id && state.hasOwnProperty(cb.id)) {
                     cb.checked = state[cb.id];
                 } else {
-                    cb.checked = false; // Default to unchecked if not found or no ID
+                    cb.checked = false;
                 }
-                updateStyle(cb); // Update style based on loaded/default state
+                updateStyle(cb);
             });
         }
 
-
         // --- Custom Objectives Logic ---
-
-        // Creates the HTML elements for a single custom objective
         function createCustomObjectiveElement(objData) { // objData = { text: string, checked: boolean, image?: string }
             const li = document.createElement('li');
-            li.classList.add('custom-objective-item'); // Mark this as a custom item
-            li.draggable = true; // Make it draggable
+            li.classList.add('custom-objective-item');
+            li.draggable = true;
 
             const label = document.createElement('label');
-
-            // Only add the image ONCE, before the text/checkbox
             let img = null;
             if (objData.image) {
                 img = document.createElement('img');
@@ -755,33 +742,44 @@
             checkbox.type = 'checkbox';
             checkbox.checked = objData.checked || false;
 
-            // Editable span for text
             const span = document.createElement('span');
-            span.textContent = objData.text || '';
-            span.style.cursor = 'pointer';
+            span.textContent = objData.text || (objData.image ? '' : 'New Objective'); // Provide default if text is empty but image exists
+            span.style.cursor = 'text'; // Indicate text is editable
 
-            // Inline editing logic (also works after it's been added)
-            span.addEventListener('click', function (e) {
+            span.addEventListener('click', function handleSpanClick(e) {
+                // Prevent triggering edit if already editing
                 if (label.querySelector('.custom-objective-edit-input')) return;
+
+                const currentText = span.textContent;
                 const input = document.createElement('input');
                 input.type = 'text';
-                input.value = span.textContent;
+                input.value = currentText;
                 input.className = 'custom-objective-edit-input';
-                input.addEventListener('keydown', function (ev) {
-                    if (ev.key === 'Enter') {
-                        span.textContent = input.value;
-                        input.replaceWith(span);
-                        saveCustomObjectives();
-                    } else if (ev.key === 'Escape') {
-                        input.replaceWith(span);
-                    }
-                });
-                input.addEventListener('blur', function () {
-                    span.textContent = input.value;
+
+                function saveEdit() {
+                    const newText = input.value.trim();
+                    span.textContent = newText || (objData.image ? '' : 'New Objective'); // Restore default if empty
                     input.replaceWith(span);
                     saveCustomObjectives();
+                    // Re-attach click listener after replacing
+                    span.addEventListener('click', handleSpanClick);
+                }
+
+                input.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter') {
+                        saveEdit();
+                        ev.preventDefault(); // Prevent potential form submission
+                    } else if (ev.key === 'Escape') {
+                        input.replaceWith(span); // Revert without saving
+                        span.addEventListener('click', handleSpanClick); // Re-attach
+                    }
                 });
+                input.addEventListener('blur', saveEdit); // Save on blur
+
+                // Remove original click listener while editing
+                span.removeEventListener('click', handleSpanClick);
                 label.replaceChild(input, span);
+                input.select(); // Select text for easy replacement
                 input.focus();
             });
 
@@ -789,6 +787,7 @@
             removeButton.textContent = '×';
             removeButton.className = 'remove-objective-button';
             removeButton.title = 'Remove objective';
+            removeButton.setAttribute('aria-label', 'Remove objective');
 
             checkbox.addEventListener('change', () => {
                 updateStyle(checkbox);
@@ -809,38 +808,32 @@
             li.addEventListener('dragend', handleDragEnd);
 
             updateStyle(checkbox);
-
             return li;
         }
 
-        // Saves the current list of ALL custom objectives across sections to localStorage
         function saveCustomObjectives() {
             const customObjectivesData = [];
-            const objectiveLists = document.querySelectorAll('ul.objective-list');
+            const lists = document.querySelectorAll('ul.objective-list');
 
-            objectiveLists.forEach(ul => {
+            lists.forEach(ul => {
                 const sectionId = ul.id;
-                if (!sectionId) {
-                    console.warn("Objective list found without an ID, cannot save custom objectives for it:", ul);
-                    return; // Skip lists without IDs
-                }
+                if (!sectionId) return;
 
-                // For each custom objective, record its index among all children (including normal objectives)
                 const lis = Array.from(ul.children);
                 lis.forEach((li, idx) => {
                     if (li.classList.contains('custom-objective-item')) {
                         const checkbox = li.querySelector('input[type="checkbox"]');
-                        const span = li.querySelector('span');
-                        let image = null;
+                        const span = li.querySelector('label span'); // Target the span inside label
                         const img = li.querySelector('img.custom-objective-image');
-                        if (img) image = img.src;
+                        const imageSrc = img ? img.src : undefined;
+
                         if (checkbox && span) {
                             customObjectivesData.push({
                                 sectionId: sectionId,
                                 text: span.textContent,
                                 checked: checkbox.checked,
-                                index: idx,
-                                image: image || undefined
+                                index: idx, // Save the actual index within the list
+                                image: imageSrc
                             });
                         }
                     }
@@ -849,391 +842,406 @@
             localStorage.setItem(customStorageKey, JSON.stringify(customObjectivesData));
         }
 
-        // Loads custom objectives from localStorage and displays them in their respective sections
+
         function loadCustomObjectives() {
-            // Clear existing dynamically added custom objectives first
             document.querySelectorAll('li.custom-objective-item').forEach(item => item.remove());
 
-            const savedCustomObjectives = localStorage.getItem(customStorageKey);
-            if (savedCustomObjectives) {
+            const savedData = localStorage.getItem(customStorageKey);
+            if (savedData) {
                 try {
-                    const customObjectivesData = JSON.parse(savedCustomObjectives);
+                    const customObjectivesData = JSON.parse(savedData);
                     if (Array.isArray(customObjectivesData)) {
-                        // Group by section for efficiency
-                        const sectionMap = {};
+                        // Group by section first to maintain relative order within sections
+                        const sectionsMap = {};
                         customObjectivesData.forEach(objData => {
-                            if (!sectionMap[objData.sectionId]) sectionMap[objData.sectionId] = [];
-                            sectionMap[objData.sectionId].push(objData);
+                            if (!sectionsMap[objData.sectionId]) sectionsMap[objData.sectionId] = [];
+                            sectionsMap[objData.sectionId].push(objData);
                         });
-                        Object.entries(sectionMap).forEach(([sectionId, items]) => {
-                            const targetList = document.getElementById(sectionId);
-                            if (!targetList) return;
-                            // Sort by saved index
-                            items.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-                            items.forEach(objData => {
-                                const li = createCustomObjectiveElement({ text: objData.text, checked: objData.checked, image: objData.image });
-                                // Insert at the correct index (before the placeholder if index is too large)
-                                const lis = Array.from(targetList.children);
-                                let insertBefore = null;
-                                let count = 0;
-                                for (let i = 0; i < lis.length; i++) {
-                                    if (count === objData.index) {
-                                        insertBefore = lis[i];
-                                        break;
-                                    }
-                                    // Don't count the placeholder itself
-                                    if (!lis[i].classList.contains('add-objective-placeholder')) {
-                                        count++;
-                                    }
-                                }
-                                if (!insertBefore) {
-                                    // Insert before placeholder if exists, else at end
-                                    insertBefore = targetList.querySelector('.add-objective-placeholder') || null;
-                                }
-                                targetList.insertBefore(li, insertBefore);
-                            });
+
+                        // Sort within each section by saved index
+                        for (const sectionId in sectionsMap) {
+                            sectionsMap[sectionId].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+                        }
+
+                        // Now iterate through the sorted data and insert
+                        customObjectivesData.forEach(objData => {
+                            const targetList = document.getElementById(objData.sectionId);
+                            if (targetList) {
+                                const li = createCustomObjectiveElement({
+                                    text: objData.text,
+                                    checked: objData.checked,
+                                    image: objData.image
+                                });
+
+                                // Insert at the correct position based on saved index
+                                const children = targetList.children;
+                                const targetNode = children[objData.index] || targetList.querySelector('.add-objective-placeholder') || null;
+                                targetList.insertBefore(li, targetNode);
+                            } else {
+                                console.warn(`Target list ${objData.sectionId} not found for custom objective.`);
+                            }
                         });
+
                     } else {
                         console.error("Custom objectives data is not an array:", customObjectivesData);
-                        localStorage.removeItem(customStorageKey); // Clear invalid data
+                        localStorage.removeItem(customStorageKey);
                     }
                 } catch (e) {
                     console.error("Error parsing custom objectives from localStorage:", e);
-                    localStorage.removeItem(customStorageKey); // Clear potentially corrupted data
+                    localStorage.removeItem(customStorageKey);
                 }
             }
         }
 
-        // Adds a new custom objective to the specific section where the button was clicked
-        // Optionally pass imageDataURL for image support
-        function addCustomObjective(addButton, imageDataURL = null) {
-            const placeholderLi = addButton.closest('.add-objective-placeholder');
+
+        function addCustomObjective(placeholderLi, imageDataURL = null) {
             const inputField = placeholderLi?.querySelector('input[type="text"]');
             const targetList = placeholderLi?.closest('ul.objective-list');
 
-            if (!inputField || !targetList || !targetList.id) {
-                console.error("Could not find input field or target list ID for adding objective.");
+            if (!placeholderLi || !inputField || !targetList || !targetList.id) {
+                console.error("Could not find required elements for adding objective.");
                 return;
             }
 
             const text = inputField.value.trim();
+            // Require either text or an image to add an objective
             if (text || imageDataURL) {
                 const newObjData = { text: text, checked: false };
                 if (imageDataURL) newObjData.image = imageDataURL;
                 const li = createCustomObjectiveElement(newObjData);
 
-                // Insert the new item before the placeholder li
+                // Insert the new item *before* the placeholder li
                 targetList.insertBefore(li, placeholderLi);
 
-                saveCustomObjectives(); // Save the updated list including the new item
-                inputField.value = ''; // Clear the input field for that section
-                inputField.focus();
+                saveCustomObjectives(); // Save the updated list
+                inputField.value = ''; // Clear the input field
+                inputField.focus(); // Keep focus in the input for quick adding
             }
         }
 
         // --- Drag and Drop Handlers ---
-
         function handleDragStart(event) {
-            draggedItem = event.target.closest('li.custom-objective-item');
-            if (draggedItem) {
-                // Store the source list id for validation
-                event.dataTransfer.setData('text/plain', draggedItem.closest('ul.objective-list').id);
-                event.dataTransfer.effectAllowed = 'move';
-                setTimeout(() => {
+            // Only allow dragging custom objective items
+            if (event.target.classList.contains('custom-objective-item')) {
+                draggedItem = event.target;
+                setTimeout(() => { // Use timeout to ensure style applies after drag starts
                     draggedItem.classList.add('dragging');
                 }, 0);
+                event.dataTransfer.effectAllowed = 'move';
+                // Optional: Set data for potential cross-list dragging (though not implemented here)
+                // event.dataTransfer.setData('text/plain', draggedItem.id); // Needs IDs on items
             } else {
                 event.preventDefault(); // Prevent dragging non-custom items
             }
         }
 
         function handleDragEnd(event) {
-            event.preventDefault();
             if (draggedItem) {
                 draggedItem.classList.remove('dragging');
-                document.querySelectorAll('.drag-over-indicator').forEach(indicator => {
-                    indicator.classList.remove('drag-over-indicator');
-                });
-                draggedItem = null;
             }
+            // Clean up any remaining indicators
+            document.querySelectorAll('.drag-over-indicator').forEach(indicator => {
+                indicator.classList.remove('drag-over-indicator');
+            });
+            draggedItem = null;
         }
 
         function handleDragOver(event) {
-            event.preventDefault();
-            if (!draggedItem) return;
+            event.preventDefault(); // Necessary to allow drop
+            if (!draggedItem) return; // Only respond if dragging a valid item
 
             const targetList = event.target.closest('ul.objective-list');
-            if (!targetList) return;
+            if (!targetList) return; // Not over a valid list
 
-            // Find the closest LI in the list
+            event.dataTransfer.dropEffect = 'move';
+
+            // Find the list item being hovered over
             let targetLi = event.target.closest('li');
-            // Only allow dropping before standard or custom objectives, but not before the add-objective-placeholder
-            if (targetLi && targetLi.classList.contains('add-objective-placeholder')) {
-                targetLi = null; // treat as dropping before the placeholder (end of list)
-            }
 
-            // Only allow drop indicators before standard or custom objectives, not before add-objective-placeholder
+            // Clear previous indicators
             targetList.querySelectorAll('.drag-over-indicator').forEach(el => el.classList.remove('drag-over-indicator'));
-            if (targetLi) {
+
+            // Determine where to show the indicator
+            if (targetLi && targetLi !== draggedItem && !targetLi.classList.contains('add-objective-placeholder')) {
+                // Show indicator *before* the target list item
                 targetLi.classList.add('drag-over-indicator');
-            } else {
-                const placeholder = targetList.querySelector('.add-objective-placeholder');
-                if (placeholder) {
-                    placeholder.classList.add('drag-over-indicator');
-                }
+            } else if (targetLi && targetLi.classList.contains('add-objective-placeholder')) {
+                // If over placeholder, show indicator before it (effectively at the end)
+                targetLi.classList.add('drag-over-indicator');
             }
+            // If hovering over empty space in the list, or over the dragged item itself, no indicator needed here
+            // (Drop handler will append to end if no specific target is found)
         }
+
 
         function handleDrop(event) {
             event.preventDefault();
-            if (!draggedItem) return;
+            if (!draggedItem) return; // Only handle drops of our custom items
 
             const targetList = event.target.closest('ul.objective-list');
-            if (!targetList) return;
-
-            // Find the closest LI in the list
-            let targetLi = event.target.closest('li');
-            // Only allow dropping before standard or custom objectives, but not before the add-objective-placeholder
-            if (targetLi && targetLi.classList.contains('add-objective-placeholder')) {
-                targetLi = null; // treat as dropping before the placeholder (end of list)
+            if (!targetList) { // Should not happen if dragOver worked, but good safety check
+                handleDragEnd(event); // Clean up
+                return;
             }
 
-            if (targetLi) {
-                targetList.insertBefore(draggedItem, targetLi);
+            // Find the element the indicator was placed on (or the placeholder)
+            const dropTarget = targetList.querySelector('.drag-over-indicator');
+
+            if (dropTarget) {
+                // Insert the dragged item *before* the element with the indicator
+                targetList.insertBefore(draggedItem, dropTarget);
             } else {
+                // If no specific drop target (e.g., dropped in empty space below items),
+                // append before the placeholder, or just append if no placeholder exists.
                 const placeholder = targetList.querySelector('.add-objective-placeholder');
                 if (placeholder) {
                     targetList.insertBefore(draggedItem, placeholder);
                 } else {
-                    targetList.appendChild(draggedItem);
+                    targetList.appendChild(draggedItem); // Fallback
                 }
             }
 
-            targetList.querySelectorAll('.drag-over-indicator').forEach(el => el.classList.remove('drag-over-indicator'));
+            // Clean up indicator class from the target element (which is now the element *after* the dropped item)
+            if (dropTarget) {
+                dropTarget.classList.remove('drag-over-indicator');
+            }
 
-            // --- Save custom objectives order after drag ---
-            // This ensures the order is saved even if custom objectives are moved between normal objectives
-            saveCustomObjectives();
+            saveCustomObjectives(); // Save the new order
+            handleDragEnd(event); // General cleanup
         }
 
-
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('li.custom-objective-item:not(.dragging)')];
-
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
+        // --- Add Placeholder Drag/Drop/Paste Listeners ---
+        function setupPlaceholderListeners(placeholder) {
+            // Drag Over/Enter/Leave for visual feedback
+            placeholder.addEventListener('dragover', (event) => {
+                event.preventDefault(); // Allow drop
+                // Only add class if dataTransfer contains files (not our list items)
+                if (event.dataTransfer.types.includes('Files')) {
+                    placeholder.classList.add('dragover');
+                    event.dataTransfer.dropEffect = 'copy'; // Indicate copying file
                 } else {
-                    return closest;
+                    event.dataTransfer.dropEffect = 'none'; // Prevent dropping list items here
                 }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
+            });
+            placeholder.addEventListener('dragenter', (event) => {
+                event.preventDefault();
+                if (event.dataTransfer.types.includes('Files')) {
+                    placeholder.classList.add('dragover');
+                }
+            });
+            placeholder.addEventListener('dragleave', (event) => {
+                // Check if the leave event is going outside the placeholder bounds
+                if (!placeholder.contains(event.relatedTarget)) {
+                    placeholder.classList.remove('dragover');
+                }
+            });
 
-        // --- Drag and Drop Image into Placeholder ---
+            // Drop Handler for Files
+            placeholder.addEventListener('drop', (event) => {
+                event.preventDefault();
+                event.stopPropagation(); // *** FIX: Prevent bubbling to the list's drop handler ***
+                placeholder.classList.remove('dragover');
 
-        // Add dragover/dragenter/dragleave/drop listeners to each add-objective-placeholder
-        document.querySelectorAll('.add-objective-placeholder').forEach(placeholder => {
-            placeholder.addEventListener('dragover', function (event) {
-                event.preventDefault();
-                placeholder.classList.add('dragover');
-            });
-            placeholder.addEventListener('dragenter', function (event) {
-                event.preventDefault();
-                placeholder.classList.add('dragover');
-            });
-            placeholder.addEventListener('dragleave', function (event) {
-                placeholder.classList.remove('dragover');
-            });
-            placeholder.addEventListener('drop', function (event) {
-                event.preventDefault();
-                placeholder.classList.remove('dragover');
                 const files = event.dataTransfer.files;
                 if (files && files.length > 0) {
-                    const file = files[0];
+                    const file = files[0]; // Handle first file
                     if (file.type.startsWith('image/')) {
                         const reader = new FileReader();
                         reader.onload = function (e) {
-                            // Add as a custom objective with image, using empty text if input is empty
-                            const addButton = placeholder.querySelector('.add-section-objective-button');
-                            const inputField = placeholder.querySelector('input[type="text"]');
-                            // If input is empty, use a default text
-                            if (addButton) {
-                                addCustomObjective(addButton, e.target.result);
-                            }
+                            // Use 'placeholder' (which is the 'li' element) directly
+                            addCustomObjective(placeholder, e.target.result);
                         };
                         reader.readAsDataURL(file);
+                    } else {
+                        alert('Only image files can be dropped here.');
                     }
                 }
             });
-        });
+
+            // Paste Handler
+            placeholder.addEventListener('paste', (event) => {
+                const items = (event.clipboardData || window.clipboardData)?.items;
+                if (!items) return;
+
+                let imageFound = false;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                        event.preventDefault(); // Prevent default paste action (like pasting text)
+                        const file = items[i].getAsFile();
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                // Use 'placeholder' (which is the 'li' element) directly
+                                addCustomObjective(placeholder, e.target.result);
+                            };
+                            reader.readAsDataURL(file);
+                            imageFound = true;
+                            break; // Handle first image found
+                        }
+                    }
+                }
+                // Optional: Provide feedback if paste didn't contain an image?
+                // if (!imageFound) { console.log("Paste did not contain a recognized image file."); }
+            });
+        }
+
 
         // --- Clearing Functions ---
-
-        // Clears ONLY the checkmarks from ALL objectives (predefined and custom)
         function clearAllChecks() {
             if (confirm("Are you sure you want to clear all check marks?")) {
-                // Uncheck ALL checkboxes in the document
                 allCheckboxes.forEach(cb => {
                     cb.checked = false;
                     updateStyle(cb);
                 });
-
-                // Clear saved state for predefined checks
                 localStorage.removeItem(predefinedStorageKey);
-
-                // Also update and save custom objectives as unchecked
-                // Uncheck all custom objective checkboxes and update style
+                // Update custom objectives to be unchecked and save
                 document.querySelectorAll('li.custom-objective-item input[type="checkbox"]').forEach(cb => {
                     cb.checked = false;
-                    updateStyle(cb);
+                    updateStyle(cb); // Ensure visual update
                 });
-                saveCustomObjectives();
+                saveCustomObjectives(); // Save the unchecked state
             }
         }
 
-
-        // Clears ONLY the custom objectives list items and their storage
         function clearCustomObjectives() {
-            if (confirm("Are you sure you want to clear all custom objectives from all sections? This cannot be undone.")) {
-                // Remove all custom list items from the DOM
+            if (confirm("Are you sure you want to clear ALL custom objectives? This cannot be undone.")) {
                 document.querySelectorAll('li.custom-objective-item').forEach(item => item.remove());
-                // Remove custom objectives data from storage
                 localStorage.removeItem(customStorageKey);
             }
         }
 
-        // Clears ALL checkmarks AND custom objectives AND all storage
         function clearAllStorage() {
-            if (confirm("WARNING: This will clear ALL check marks AND remove ALL custom objectives permanently from all sections. Are you sure?")) {
-                // Clear all checks (unchecks everything visually)
+            if (confirm("WARNING: This will clear ALL check marks AND remove ALL custom objectives permanently. Are you sure?")) {
                 allCheckboxes.forEach(cb => {
                     cb.checked = false;
                     updateStyle(cb);
                 });
-
-                // Clear predefined storage
-                localStorage.removeItem(predefinedStorageKey);
-
-                // Clear custom objectives from DOM and storage
                 document.querySelectorAll('li.custom-objective-item').forEach(item => item.remove());
+                localStorage.removeItem(predefinedStorageKey);
                 localStorage.removeItem(customStorageKey);
+                // Also clear collapsed state if desired
+                localStorage.removeItem(collapsedStorageKey);
+                // Optionally reload or reset collapse state visually
+                document.querySelectorAll('.section.collapsed').forEach(section => {
+                    section.classList.remove('collapsed');
+                    const btn = section.querySelector('.collapse-toggle');
+                    if (btn) btn.textContent = '▼';
+                });
             }
+        }
+
+        // --- Modal Logic ---
+        const imageModal = document.getElementById('image-modal');
+        const modalImage = imageModal.querySelector('img');
+        const modalCloseButton = imageModal.querySelector('.image-modal-close');
+
+        function showImageModal(src) {
+            modalImage.src = src;
+            imageModal.classList.add('active');
+            modalCloseButton.focus(); // Focus close button for accessibility
+        }
+
+        function hideImageModal() {
+            imageModal.classList.remove('active');
+            modalImage.src = '';
         }
 
         // --- Event Listeners Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
             loadPredefinedState();
-            loadCustomObjectives();
+            loadCustomObjectives(); // Load custom objectives first
 
-            // Restore collapsed state from localStorage
-            const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
+            // Load collapsed state
+            const collapsedSections = JSON.parse(localStorage.getItem(collapsedStorageKey) || '{}');
             document.querySelectorAll('.section').forEach(section => {
                 const sectionId = section.id;
-                if (collapsedSections[sectionId]) {
+                if (sectionId && collapsedSections[sectionId]) {
                     section.classList.add('collapsed');
                     const btn = section.querySelector('.collapse-toggle');
                     if (btn) btn.textContent = '►';
                 }
             });
 
-            // Add drag and drop listeners to all add-objective-placeholder (for dynamically added sections)
-            document.querySelectorAll('.add-objective-placeholder').forEach(placeholder => {
-                placeholder.addEventListener('dragover', function (event) {
-                    event.preventDefault();
-                    placeholder.classList.add('dragover');
-                });
-                placeholder.addEventListener('dragenter', function (event) {
-                    event.preventDefault();
-                    placeholder.classList.add('dragover');
-                });
-                placeholder.addEventListener('dragleave', function (event) {
-                    placeholder.classList.remove('dragover');
-                });
-                placeholder.addEventListener('drop', function (event) {
-                    event.preventDefault();
-                    placeholder.classList.remove('dragover');
-                    const files = event.dataTransfer.files;
-                    if (files && files.length > 0) {
-                        const file = files[0];
-                        if (file.type.startsWith('image/')) {
-                            const reader = new FileReader();
-                            reader.onload = function (e) {
-                                const addButton = placeholder.querySelector('.add-section-objective-button');
-                                if (addButton) {
-                                    addCustomObjective(addButton, e.target.result);
-                                }
-                            };
-                            reader.readAsDataURL(file);
-                        }
-                    }
-                });
+            // Add listeners to existing placeholders
+            document.querySelectorAll('.add-objective-placeholder').forEach(setupPlaceholderListeners);
+
+            // Add list-level drag/drop listeners for reordering items
+            objectiveLists.forEach(list => {
+                list.addEventListener('dragover', handleDragOver);
+                list.addEventListener('drop', handleDrop);
+                // Optional: dragleave on list might be needed for cleanup in complex scenarios
+                // list.addEventListener('dragleave', handleDragLeave);
             });
 
-            // Modal close logic
-            document.getElementById('image-modal').addEventListener('click', function (e) {
-                if (e.target === this || e.target.classList.contains('image-modal-close')) {
+
+            // Modal close listeners
+            imageModal.addEventListener('click', (e) => {
+                if (e.target === imageModal || e.target === modalCloseButton) {
                     hideImageModal();
                 }
             });
-        });
-
-        // Add dragover and drop listeners to each objective list container
-        objectiveLists.forEach(list => {
-            list.addEventListener('dragover', handleDragOver);
-            // dragleave listener can be added to remove indicators if needed, but drop/dragend usually suffice
-            // list.addEventListener('dragleave', handleDragLeave);
-            list.addEventListener('drop', handleDrop);
-        });
-
-
-        // Event Delegation for adding custom objectives within sections
-        document.body.addEventListener('click', function (event) {
-            // Check if the clicked element is an add button within a placeholder
-            if (event.target && event.target.classList.contains('add-section-objective-button')) {
-                addCustomObjective(event.target);
-            }
-            // Check if the clicked element is a checkbox within a predefined objective (identified by having an ID)
-            else if (event.target && event.target.matches('.objective-list li:not(.custom-objective-item) input[type="checkbox"][id]')) {
-                updateStyle(event.target);
-                savePredefinedState();
-            }
-            // Collapsible section toggle
-            else if (event.target && event.target.classList.contains('collapse-toggle')) {
-                const section = event.target.closest('.section');
-                if (section) {
-                    section.classList.toggle('collapsed');
-                    event.target.textContent = section.classList.contains('collapsed') ? '►' : '▼';
-
-                    // Save collapsed state to localStorage
-                    const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
-                    collapsedSections[section.id] = section.classList.contains('collapsed');
-                    localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+            modalCloseButton.addEventListener('click', hideImageModal);
+            imageModal.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideImageModal();
                 }
-            }
-            // Note: Checkbox changes for *custom* objectives are handled by listeners added in createCustomObjectiveElement
-        });
+            });
 
-        // Event Delegation for Enter key press in placeholder inputs
-        document.body.addEventListener('keypress', function (event) {
-            if (event.key === 'Enter' && event.target && event.target.matches('.add-objective-placeholder input[type="text"]')) {
-                // Find the corresponding button and trigger the add function
-                const placeholderLi = event.target.closest('.add-objective-placeholder');
-                const addButton = placeholderLi?.querySelector('.add-section-objective-button');
-                if (addButton) {
-                    addCustomObjective(addButton);
-                    event.preventDefault(); // Prevent potential form submission if wrapped in one
+
+            // Event Delegation for dynamic elements and common actions
+            document.body.addEventListener('click', (event) => {
+                // Add Objective Button
+                if (event.target.classList.contains('add-section-objective-button')) {
+                    const placeholderLi = event.target.closest('.add-objective-placeholder');
+                    if (placeholderLi) {
+                        addCustomObjective(placeholderLi); // Add text-only objective
+                    }
                 }
-            }
-        });
+                // Predefined Checkbox Change
+                else if (event.target.matches('.objective-list li:not(.custom-objective-item):not(.add-objective-placeholder) input[type="checkbox"][id]')) {
+                    updateStyle(event.target);
+                    savePredefinedState();
+                }
+                // Collapse Toggle Button
+                else if (event.target.classList.contains('collapse-toggle')) {
+                    const section = event.target.closest('.section');
+                    if (section) {
+                        const isCollapsed = section.classList.toggle('collapsed');
+                        event.target.textContent = isCollapsed ? '►' : '▼';
+                        // Save collapsed state
+                        const currentCollapsed = JSON.parse(localStorage.getItem(collapsedStorageKey) || '{}');
+                        if (section.id) {
+                            currentCollapsed[section.id] = isCollapsed;
+                            localStorage.setItem(collapsedStorageKey, JSON.stringify(currentCollapsed));
+                        }
+                    }
+                }
+                // Note: Custom checkbox changes/removals handled by listeners in createCustomObjectiveElement
+            });
 
-        // Optional: Keyboard accessibility for collapse-toggle
-        document.body.addEventListener('keydown', function (event) {
-            if (event.target && event.target.classList.contains('collapse-toggle') && (event.key === 'Enter' || event.key === ' ')) {
-                event.preventDefault();
-                event.target.click();
-            }
+            // Enter key in placeholder input
+            document.body.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter' && event.target.matches('.add-objective-placeholder input[type="text"]')) {
+                    const placeholderLi = event.target.closest('.add-objective-placeholder');
+                    if (placeholderLi) {
+                        addCustomObjective(placeholderLi);
+                        event.preventDefault();
+                    }
+                }
+            });
+
+            // Keyboard accessibility for toggle buttons
+            document.body.addEventListener('keydown', (event) => {
+                if (event.target.classList.contains('collapse-toggle') && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    event.target.click();
+                }
+            });
+
+            // Main control buttons
+            clearAllStorageButton.addEventListener('click', clearAllStorage);
+            clearChecksButton.addEventListener('click', clearAllChecks);
+            clearCustomObjectivesButton.addEventListener('click', clearCustomObjectives);
         });
 
         // Listeners for the main clear buttons
@@ -1241,19 +1249,7 @@
         clearChecksButton.addEventListener('click', clearAllChecks);
         clearCustomObjectivesButton.addEventListener('click', clearCustomObjectives);
 
-        // Modal logic for full-size image
-        function showImageModal(src) {
-            const modal = document.getElementById('image-modal');
-            const img = modal.querySelector('img');
-            img.src = src;
-            modal.classList.add('active');
-        }
 
-        function hideImageModal() {
-            const modal = document.getElementById('image-modal');
-            modal.classList.remove('active');
-            modal.querySelector('img').src = '';
-        }
     </script>
 </body>
 
