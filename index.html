@@ -225,6 +225,69 @@
             align-items: center;
             gap: 6px;
         }
+
+        /* Add styles for images in custom objectives */
+        .custom-objective-image {
+            max-width: 48px;
+            max-height: 48px;
+            margin-right: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .add-objective-placeholder.dragover {
+            background-color: #e3ffe3;
+            border-color: #28a745;
+        }
+
+        /* Modal for full-size image */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal.active {
+            display: flex;
+        }
+
+        .image-modal img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 16px #0008;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            font-size: 2em;
+            color: #fff;
+            background: none;
+            border: none;
+            cursor: pointer;
+            z-index: 10000;
+        }
+
+        .custom-objective-edit-input {
+            flex-grow: 1;
+            font-size: 1em;
+            padding: 2px 6px;
+            margin-left: 0;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 
@@ -578,6 +641,11 @@
         </ul>
     </div>
 
+    <div id="image-modal" class="image-modal">
+        <button class="image-modal-close" aria-label="Close image">&times;</button>
+        <img src="" alt="Full size custom objective image" />
+    </div>
+
     <script>
         // --- DOM Elements ---
         // Select ALL checkboxes initially for clearing/loading predefined ones with IDs
@@ -655,48 +723,92 @@
         // --- Custom Objectives Logic ---
 
         // Creates the HTML elements for a single custom objective
-        function createCustomObjectiveElement(objData) { // objData = { text: string, checked: boolean }
+        function createCustomObjectiveElement(objData) { // objData = { text: string, checked: boolean, image?: string }
             const li = document.createElement('li');
             li.classList.add('custom-objective-item'); // Mark this as a custom item
             li.draggable = true; // Make it draggable
 
             const label = document.createElement('label');
-            const checkbox = document.createElement('input');
-            const span = document.createElement('span');
-            const removeButton = document.createElement('button');
 
+            // Only add the image ONCE, before the text/checkbox
+            let img = null;
+            if (objData.image) {
+                img = document.createElement('img');
+                img.src = objData.image;
+                img.className = 'custom-objective-image';
+                img.alt = 'Custom objective image';
+                img.tabIndex = 0;
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showImageModal(objData.image);
+                });
+                img.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        showImageModal(objData.image);
+                    }
+                });
+                label.appendChild(img);
+            }
+
+            const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = objData.checked || false;
-            span.textContent = objData.text;
 
+            // Editable span for text
+            const span = document.createElement('span');
+            span.textContent = objData.text || '';
+            span.style.cursor = 'pointer';
+
+            // Inline editing logic (also works after it's been added)
+            span.addEventListener('click', function (e) {
+                if (label.querySelector('.custom-objective-edit-input')) return;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = span.textContent;
+                input.className = 'custom-objective-edit-input';
+                input.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter') {
+                        span.textContent = input.value;
+                        input.replaceWith(span);
+                        saveCustomObjectives();
+                    } else if (ev.key === 'Escape') {
+                        input.replaceWith(span);
+                    }
+                });
+                input.addEventListener('blur', function () {
+                    span.textContent = input.value;
+                    input.replaceWith(span);
+                    saveCustomObjectives();
+                });
+                label.replaceChild(input, span);
+                input.focus();
+            });
+
+            const removeButton = document.createElement('button');
             removeButton.textContent = '×';
             removeButton.className = 'remove-objective-button';
             removeButton.title = 'Remove objective';
 
-            // Event listener for the checkbox CHANGE (specific to custom items)
             checkbox.addEventListener('change', () => {
                 updateStyle(checkbox);
-                saveCustomObjectives(); // Save when state changes
+                saveCustomObjectives();
             });
 
-            // Event listener for the REMOVE button
             removeButton.addEventListener('click', () => {
-                li.remove(); // Remove the list item from the DOM
-                saveCustomObjectives(); // Save the updated list
+                li.remove();
+                saveCustomObjectives();
             });
-
 
             label.appendChild(checkbox);
             label.appendChild(span);
             li.appendChild(label);
             li.appendChild(removeButton);
 
-            // Drag and Drop Listeners
             li.addEventListener('dragstart', handleDragStart);
             li.addEventListener('dragend', handleDragEnd);
 
-
-            updateStyle(checkbox); // Apply initial style
+            updateStyle(checkbox);
 
             return li;
         }
@@ -719,12 +831,16 @@
                     if (li.classList.contains('custom-objective-item')) {
                         const checkbox = li.querySelector('input[type="checkbox"]');
                         const span = li.querySelector('span');
+                        let image = null;
+                        const img = li.querySelector('img.custom-objective-image');
+                        if (img) image = img.src;
                         if (checkbox && span) {
                             customObjectivesData.push({
                                 sectionId: sectionId,
                                 text: span.textContent,
                                 checked: checkbox.checked,
-                                index: idx
+                                index: idx,
+                                image: image || undefined
                             });
                         }
                     }
@@ -755,7 +871,7 @@
                             // Sort by saved index
                             items.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
                             items.forEach(objData => {
-                                const li = createCustomObjectiveElement({ text: objData.text, checked: objData.checked });
+                                const li = createCustomObjectiveElement({ text: objData.text, checked: objData.checked, image: objData.image });
                                 // Insert at the correct index (before the placeholder if index is too large)
                                 const lis = Array.from(targetList.children);
                                 let insertBefore = null;
@@ -789,7 +905,8 @@
         }
 
         // Adds a new custom objective to the specific section where the button was clicked
-        function addCustomObjective(addButton) {
+        // Optionally pass imageDataURL for image support
+        function addCustomObjective(addButton, imageDataURL = null) {
             const placeholderLi = addButton.closest('.add-objective-placeholder');
             const inputField = placeholderLi?.querySelector('input[type="text"]');
             const targetList = placeholderLi?.closest('ul.objective-list');
@@ -800,8 +917,9 @@
             }
 
             const text = inputField.value.trim();
-            if (text) {
+            if (text || imageDataURL) {
                 const newObjData = { text: text, checked: false };
+                if (imageDataURL) newObjData.image = imageDataURL;
                 const li = createCustomObjectiveElement(newObjData);
 
                 // Insert the new item before the placeholder li
@@ -913,6 +1031,44 @@
             }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
+        // --- Drag and Drop Image into Placeholder ---
+
+        // Add dragover/dragenter/dragleave/drop listeners to each add-objective-placeholder
+        document.querySelectorAll('.add-objective-placeholder').forEach(placeholder => {
+            placeholder.addEventListener('dragover', function (event) {
+                event.preventDefault();
+                placeholder.classList.add('dragover');
+            });
+            placeholder.addEventListener('dragenter', function (event) {
+                event.preventDefault();
+                placeholder.classList.add('dragover');
+            });
+            placeholder.addEventListener('dragleave', function (event) {
+                placeholder.classList.remove('dragover');
+            });
+            placeholder.addEventListener('drop', function (event) {
+                event.preventDefault();
+                placeholder.classList.remove('dragover');
+                const files = event.dataTransfer.files;
+                if (files && files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            // Add as a custom objective with image, using empty text if input is empty
+                            const addButton = placeholder.querySelector('.add-section-objective-button');
+                            const inputField = placeholder.querySelector('input[type="text"]');
+                            // If input is empty, use a default text
+                            if (addButton) {
+                                addCustomObjective(addButton, e.target.result);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+            });
+        });
+
         // --- Clearing Functions ---
 
         // Clears ONLY the checkmarks from ALL objectives (predefined and custom)
@@ -981,6 +1137,46 @@
                     if (btn) btn.textContent = '►';
                 }
             });
+
+            // Add drag and drop listeners to all add-objective-placeholder (for dynamically added sections)
+            document.querySelectorAll('.add-objective-placeholder').forEach(placeholder => {
+                placeholder.addEventListener('dragover', function (event) {
+                    event.preventDefault();
+                    placeholder.classList.add('dragover');
+                });
+                placeholder.addEventListener('dragenter', function (event) {
+                    event.preventDefault();
+                    placeholder.classList.add('dragover');
+                });
+                placeholder.addEventListener('dragleave', function (event) {
+                    placeholder.classList.remove('dragover');
+                });
+                placeholder.addEventListener('drop', function (event) {
+                    event.preventDefault();
+                    placeholder.classList.remove('dragover');
+                    const files = event.dataTransfer.files;
+                    if (files && files.length > 0) {
+                        const file = files[0];
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = function (e) {
+                                const addButton = placeholder.querySelector('.add-section-objective-button');
+                                if (addButton) {
+                                    addCustomObjective(addButton, e.target.result);
+                                }
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    }
+                });
+            });
+
+            // Modal close logic
+            document.getElementById('image-modal').addEventListener('click', function (e) {
+                if (e.target === this || e.target.classList.contains('image-modal-close')) {
+                    hideImageModal();
+                }
+            });
         });
 
         // Add dragover and drop listeners to each objective list container
@@ -1045,6 +1241,19 @@
         clearChecksButton.addEventListener('click', clearAllChecks);
         clearCustomObjectivesButton.addEventListener('click', clearCustomObjectives);
 
+        // Modal logic for full-size image
+        function showImageModal(src) {
+            const modal = document.getElementById('image-modal');
+            const img = modal.querySelector('img');
+            img.src = src;
+            modal.classList.add('active');
+        }
+
+        function hideImageModal() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.remove('active');
+            modal.querySelector('img').src = '';
+        }
     </script>
 </body>
 
